@@ -1,101 +1,364 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Upload Image</title>
-  <style>
-    body {
-      font-family: Arial;
-      text-align: center;
-      margin-top: 50px;
-    }
-    img {
-      max-width: 300px;
-      margin-top: 20px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Upload</title>
+    <style>
+        :root {
+            --primary-blue: #007bff;
+            --dark-bg: #0f172a;
+            --card-bg: #1e2937;
+            --text-light: #f8fafc;
+            --text-gray: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #1e2937 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 123, 255, 0.15);
+            width: 100%;
+            max-width: 520px;
+            padding: 40px 32px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-gray);
+            font-size: 15px;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--primary-blue);
+            border-radius: 12px;
+            padding: 32px 20px;
+            text-align: center;
+            background: rgba(0, 123, 255, 0.05);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            cursor: pointer;
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-area:hover {
+            background: rgba(0, 123, 255, 0.1);
+            border-color: #60a5fa;
+        }
+
+        .preview-container {
+            display: none;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .preview-container img {
+            max-width: 100%;
+            max-height: 220px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .upload-area i {
+            font-size: 48px;
+            color: var(--primary-blue);
+            margin-bottom: 12px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            margin-bottom: 16px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            background: var(--primary-blue);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .file-label:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        button {
+            width: 100%;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .result-section {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .result-section h3 {
+            color: var(--text-gray);
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        #resultImage {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            background: #000;
+        }
+
+        .status {
+            margin-top: 12px;
+            font-size: 14px;
+            color: var(--text-gray);
+        }
+
+        .loading {
+            display: none;
+            color: var(--primary-blue);
+            font-size: 15px;
+            margin: 12px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1>Upload Image</h1>
+            <p>Process your image with AI</p>
+        </div>
 
-  <h2>Upload Image</h2>
+        <!-- Upload Area -->
+        <div class="upload-area" id="dropArea">
+            <i>📤</i>
+            <p style="color: var(--text-gray); margin-bottom: 4px;">Drop your image here</p>
+            <p style="color: #64748b; font-size: 14px;">or click to browse</p>
+        </div>
 
-  <input type="text" id="userId" placeholder="Enter userId" />
-  <br><br>
+        <!-- Preview -->
+        <div class="preview-container" id="previewContainer">
+            <img id="previewImage" alt="Selected Image">
+        </div>
 
-  <input type="file" id="imageInput" accept="image/*" />
-  <br><br>
+        <input type="text" id="userId" placeholder="Enter User ID" />
 
-  <button onclick="uploadImage()">Submit</button>
+        <input type="file" id="imageInput" accept="image/*" />
+        <label for="imageInput" class="file-label">Choose Image File</label>
 
-  <h3>Result:</h3>
-  <img id="resultImage" />
+        <button onclick="uploadImage()">Upload & Process</button>
 
-  <script>
-    async function uploadImage() {
-      const userId = document.getElementById("userId").value;
-      const fileInput = document.getElementById("imageInput");
-      const file = fileInput.files[0];
+        <div class="result-section">
+            <h3>Result</h3>
+            <div class="loading" id="loading">Processing your image...</div>
+            <img id="resultImage" alt="Result Image" />
+            <div class="status" id="status"></div>
+        </div>
+    </div>
 
-      if (!userId || !file) {
-        alert("Please provide userId and image");
-        return;
-      }
+    <script>
+        const fileInput = document.getElementById("imageInput");
+        const previewContainer = document.getElementById("previewContainer");
+        const previewImage = document.getElementById("previewImage");
+        const dropArea = document.getElementById("dropArea");
 
-      const reader = new FileReader();
+        // Show preview when file is selected
+        fileInput.addEventListener("change", function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    previewContainer.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
-      reader.onload = async function () {
-        const base64Image = reader.result.split(",")[1]; // remove data:image/... prefix
+        // Drag and Drop
+        dropArea.addEventListener("click", () => fileInput.click());
 
-        try {
-          const response = await fetch("http://localhost:8000/image/uploadImage", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              userId: userId,
-              image: base64Image
-            })
-          });
+        dropArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = "#60a5fa";
+            dropArea.style.background = "rgba(0, 123, 255, 0.15)";
+        });
 
-          const data = await response.json();
-          console.log("Upload response:", data);
+        dropArea.addEventListener("dragleave", () => {
+            dropArea.style.borderColor = "#007bff";
+            dropArea.style.background = "rgba(0, 123, 255, 0.05)";
+        });
 
-          // Connect to SSE
-          connectSSE(`http://localhost:8000${data.sse}`);
+        dropArea.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = "#007bff";
+            dropArea.style.background = "rgba(0, 123, 255, 0.05)";
 
-        } catch (err) {
-          console.error("Upload error:", err);
+            if (e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                fileInput.files = e.dataTransfer.files;
+
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    previewContainer.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function uploadImage() {
+            const userId = document.getElementById("userId").value.trim();
+            const file = fileInput.files[0];
+            const loading = document.getElementById("loading");
+            const status = document.getElementById("status");
+            const resultImage = document.getElementById("resultImage");
+
+            if (!userId) {
+                alert("Please enter a User ID");
+                return;
+            }
+            if (!file) {
+                alert("Please select an image");
+                return;
+            }
+
+            loading.classList.add("active");
+            status.textContent = "Uploading...";
+            resultImage.src = "";
+
+            const reader = new FileReader();
+            reader.onload = async function () {
+                const base64Image = reader.result.split(",")[1];
+
+                try {
+                    const response = await fetch("http://localhost:8000/image/uploadImage", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ userId: userId, image: base64Image })
+                    });
+
+                    const data = await response.json();
+                    console.log("Upload response:", data);
+
+                    if (data.sse) {
+                        status.textContent = "Processing with AI...";
+                        connectSSE(`http://localhost:8000${data.sse}`);
+                    }
+                } catch (err) {
+                    console.error("Upload error:", err);
+                    status.textContent = "Upload failed";
+                    loading.classList.remove("active");
+                }
+            };
+
+            reader.readAsDataURL(file);
         }
-      };
 
-      reader.readAsDataURL(file);
-    }
+        function connectSSE(url) {
+            const eventSource = new EventSource(url);
+            const loading = document.getElementById("loading");
+            const status = document.getElementById("status");
+            const resultImage = document.getElementById("resultImage");
 
-    function connectSSE(url) {
-      console.log("Connecting to SSE:", url);
+            eventSource.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                console.log("SSE data:", data);
 
-      const eventSource = new EventSource(url);
+                if (data.image) {
+                    resultImage.src = "data:image/png;base64," + data.image;
+                    status.textContent = "Processing complete!";
+                    loading.classList.remove("active");
+                    eventSource.close();
+                } 
+                else if (data.error) {
+                    alert("Error: " + data.error);
+                    status.textContent = "Error occurred";
+                    loading.classList.remove("active");
+                    eventSource.close();
+                }
+            };
 
-      eventSource.onmessage = function (event) {
-        const data = JSON.parse(event.data);
-        console.log("SSE data:", data);
-
-        if (data.image) {
-          document.getElementById("resultImage").src = "data:image/png;base64," + data.image;
-        } else if (data.error) {
-          alert("Error: " + data.error);
+            eventSource.onerror = function (err) {
+                console.error("SSE error:", err);
+                status.textContent = "Connection error";
+                loading.classList.remove("active");
+                eventSource.close();
+            };
         }
-
-        eventSource.close(); // close after receiving result
-      };
-
-      eventSource.onerror = function (err) {
-        console.error("SSE error:", err);
-        eventSource.close();
-      };
-    }
-  </script>
-
+    </script>
 </body>
 </html>

@@ -13,7 +13,7 @@ export const processImage = async (userId: string): Promise<string> => {
   }
 
   // 🔥 Call your external API
-  const response = await axios.post("http://host.docker.internal:5000/image/process", {
+  const response = await axios.post("http://img-seg-container:5000/image/process", {
     image
   });
 
