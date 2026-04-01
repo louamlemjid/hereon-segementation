@@ -305,7 +305,7 @@
                 const base64Image = reader.result.split(",")[1];
 
                 try {
-                    const response = await fetch("http://localhost:8000/image/uploadImage", {
+                    const response = await fetch("https://8000-01kn1yjy22s5hs3ew6tt5npwhk.cloudspaces.litng.ai/image/uploadImage", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ userId: userId, image: base64Image })
@@ -316,7 +316,7 @@
 
                     if (data.sse) {
                         status.textContent = "Processing with AI...";
-                        connectSSE(`http://localhost:8000${data.sse}`);
+                        connectSSE(`https://8000-01kn1yjy22s5hs3ew6tt5npwhk.cloudspaces.litng.ai${data.sse}`);
                     }
                 } catch (err) {
                     console.error("Upload error:", err);

@@ -1,24 +1,25 @@
-FROM python:3.10
+# 1. Use an official PyTorch image with GPU/CUDA support
+FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 
 WORKDIR /app
 
-# System dependencies (important for tensorflow & pillow)
+# System dependencies (libgl1 is needed for OpenCV/PIL if you use it)
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    libgl1 \
+    build-essential libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy requirements first to leverage Docker layer caching
 COPY requirements.txt .
 
-# Copy weights into the container
-COPY model_weights_strade.h5 .
-
-# Upgrade pip + install deps
+# Install Python dependencies
+# Note: Removed --ignore-installed so it doesn't break the pre-installed torch in the base image!
 RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy app
+# Copy the specific PyTorch weights file we generated
+COPY model_weights.pth .
+
+# Copy the rest of your app code
 COPY . .
 
 EXPOSE 5000
