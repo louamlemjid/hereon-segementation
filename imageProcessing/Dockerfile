@@ -18,6 +18,7 @@ RUN pip install --upgrade pip \
 
 # Copy the specific PyTorch weights file we generated
 COPY model_weights.pth .
+COPY sam_vit_h_4b8939.pth .
 
 # Copy the rest of your app code
 COPY . .

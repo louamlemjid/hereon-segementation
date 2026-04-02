@@ -73,7 +73,7 @@ docker run -d \
   --name img-seg-container \
   --network backendNet \
   --gpus all \
-  louam/img-seg:torch-v1.0
+  louam/img-seg:torch-v1.1
 ```
 
 This container serves the ML API for image segmentation.
@@ -85,9 +85,9 @@ This container serves the ML API for image segmentation.
 ```bash
 cd ../frontend
 
-docker run -d -p 8080:80 \
+docker run -it -p 8080:80 \
   --name static-site \
-  louam/frontend-img:1.1
+  louam/frontend-img:open-port-v1.0
 ```
 
 * Frontend will be accessible at [http://localhost:8080](http://localhost:8080)

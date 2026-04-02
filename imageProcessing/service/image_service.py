@@ -4,10 +4,16 @@ import io
 import numpy as np
 import torch
 from PIL import Image, ImageFile
+from segment_anything import sam_model_registry, SamPredictor
+import cv2
 
 from model import build_custom_unet
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+sam_checkpoint = "sam_vit_h_4b8939.pth"
+model_type = "vit_h"
+device = "cpu"
 
 # 1. Setup device (GPU if available, otherwise CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -48,7 +54,25 @@ def base64_to_image(base64_str):
     except Exception as e:
         print("Failed to decode image:", e)
         raise e
+def SAM_base64_to_image(base64_str):
+    try:
+        base64_str = base64_str.strip()
+        decoded = base64.b64decode(base64_str)
 
+        if len(decoded) == 0:
+            raise ValueError("Decoded image is empty!")
+
+        # Open image
+        img = Image.open(io.BytesIO(decoded)).convert("RGB")
+
+        # Convert to NumPy (H, W, C) uint8
+        img_array = np.array(img)
+
+        return img_array  # ✅ THIS is what SAM needs
+
+    except Exception as e:
+        print("Failed to decode image:", e)
+        raise e
 
 def image_to_base64(mask_array):
     # Denormalize back to 0-255
@@ -73,4 +97,37 @@ def process_image(base64_str):
 
     # mask_array shape is (1, 1, 128, 128). 
     # We pass the first image in the batch to the base64 encoder.
+    return image_to_base64(mask_array[0])
+
+def SAM_segment_image(base64_str):
+    # Decode base64 → image (NumPy array HWC, RGB)
+    img = SAM_base64_to_image(base64_str)
+
+    # Load model
+    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    sam.to(device=device)
+
+    predictor = SamPredictor(sam)
+    predictor.set_image(img)
+
+    # Example: full image mask (no prompt)
+    height, width, _ = img.shape
+
+    # Use a central point as prompt (you can improve this later)
+    input_point = np.array([[width // 2, height // 2]])
+    input_label = np.array([1])  # 1 = foreground
+
+    masks, scores, logits = predictor.predict(
+        point_coords=input_point,
+        point_labels=input_label,
+        multimask_output=False
+    )
+
+    # Convert mask to uint8 image (0 or 255)
+    mask = masks[0].astype(np.uint8) * 255
+
+    # Optional: resize to 128x128 if needed
+    mask_array = cv2.resize(mask, (128, 128))
+    mask_array = np.expand_dims(mask_array, axis=0)  # shape (1, 128, 128)
+
     return image_to_base64(mask_array[0])
