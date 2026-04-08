@@ -19,3 +19,18 @@ export const processImage = async (userId: string): Promise<string> => {
 
   return response.data.result; // assume { result: base64Image }
 };
+
+export const segmentImage = async (userId: string): Promise<string> => {
+  const image = hashStore[userId];
+
+  if (!image) {
+    throw new Error("Image not found");
+  }
+
+  // 🔥 Call your external API
+  const response = await axios.post("http://img-seg-container:5000/image/segment", {
+    image
+  });
+
+  return response.data.result; // assume { result: base64Image }
+};

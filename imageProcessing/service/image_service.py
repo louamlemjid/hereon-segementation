@@ -1,21 +1,62 @@
 # ImageProcessing/service/image_service.py
 import base64
-import numpy as np
-from PIL import ImageFile,Image
-ImageFile.LOAD_TRUNCATED_IMAGES = True
 import io
+import numpy as np
+import torch
+from PIL import Image, ImageFile
+from segment_anything import sam_model_registry, SamPredictor
+import cv2
+
 from model import build_custom_unet
 
-# Load model and weights once
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+sam_checkpoint = "sam_vit_h_4b8939.pth"
+model_type = "vit_h"
+device = "cpu"
+
+# 1. Setup device (GPU if available, otherwise CPU)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# 2. Load model and move it to the device
 model = build_custom_unet()
-model.load_weights("./model_weights_strade.h5")
+
+# NOTE: PyTorch cannot read Keras .h5 files directly. 
+# You need to save your PyTorch weights as a .pth file first.
+model.load_state_dict(torch.load("./model_weights.pth", map_location=device))
+model.to(device)
+model.eval()  # Set the model to inference mode
+
 
 def base64_to_image(base64_str):
     try:
-        # Remove whitespace/newlines
         base64_str = base64_str.strip()
+        decoded = base64.b64decode(base64_str)
 
-        # Decode base64
+        if len(decoded) == 0:
+            raise ValueError("Decoded image is empty!")
+
+        # Open image and resize
+        img = Image.open(io.BytesIO(decoded)).convert("RGB")
+        img = img.resize((128, 128))
+
+        # Convert to numpy and normalize
+        img_array = (np.array(img) / 255.0).astype(np.float32)
+
+        # Keras to PyTorch shape conversion: (H, W, C) -> (C, H, W)
+        img_array = np.transpose(img_array, (2, 0, 1))
+
+        # Convert to torch tensor and add batch dimension -> (1, C, H, W)
+        img_tensor = torch.from_numpy(img_array).unsqueeze(0)
+
+        return img_tensor.to(device)
+
+    except Exception as e:
+        print("Failed to decode image:", e)
+        raise e
+def SAM_base64_to_image(base64_str):
+    try:
+        base64_str = base64_str.strip()
         decoded = base64.b64decode(base64_str)
 
         if len(decoded) == 0:
@@ -23,22 +64,70 @@ def base64_to_image(base64_str):
 
         # Open image
         img = Image.open(io.BytesIO(decoded)).convert("RGB")
-        img = img.resize((128, 128))
-        img_array = (np.array(img) / 255.0).astype(np.float32)
-        return np.expand_dims(img_array, axis=0)  # add batch dimension
+
+        # Convert to NumPy (H, W, C) uint8
+        img_array = np.array(img)
+
+        return img_array  # ✅ THIS is what SAM needs
 
     except Exception as e:
         print("Failed to decode image:", e)
         raise e
-    
+
 def image_to_base64(mask_array):
+    # Denormalize back to 0-255
     mask_array = (mask_array * 255).astype(np.uint8)
+
+    # PyTorch output will be (1, 128, 128). Squeeze removes the channel dim.
     img = Image.fromarray(mask_array.squeeze(), mode="L")
     buffered = io.BytesIO()
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
+
 def process_image(base64_str):
-    img_array = base64_to_image(base64_str)
-    mask = model.predict(img_array)
-    return image_to_base64(mask[0])
+    img_tensor = base64_to_image(base64_str)
+
+    # Run inference without tracking gradients (saves memory/speed)
+    with torch.no_grad():
+        mask_tensor = model(img_tensor)
+
+    # Move back to CPU and convert back to a NumPy array for decoding
+    mask_array = mask_tensor.cpu().numpy()
+
+    # mask_array shape is (1, 1, 128, 128). 
+    # We pass the first image in the batch to the base64 encoder.
+    return image_to_base64(mask_array[0])
+
+def SAM_segment_image(base64_str):
+    # Decode base64 → image (NumPy array HWC, RGB)
+    img = SAM_base64_to_image(base64_str)
+
+    # Load model
+    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    sam.to(device=device)
+
+    predictor = SamPredictor(sam)
+    predictor.set_image(img)
+
+    # Example: full image mask (no prompt)
+    height, width, _ = img.shape
+
+    # Use a central point as prompt (you can improve this later)
+    input_point = np.array([[width // 2, height // 2]])
+    input_label = np.array([1])  # 1 = foreground
+
+    masks, scores, logits = predictor.predict(
+        point_coords=input_point,
+        point_labels=input_label,
+        multimask_output=False
+    )
+
+    # Convert mask to uint8 image (0 or 255)
+    mask = masks[0].astype(np.uint8) * 255
+
+    # Optional: resize to 128x128 if needed
+    mask_array = cv2.resize(mask, (128, 128))
+    mask_array = np.expand_dims(mask_array, axis=0)  # shape (1, 128, 128)
+
+    return image_to_base64(mask_array[0])

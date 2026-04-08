@@ -1,5 +1,5 @@
 import express from "express";
-import { storeImage, processImage } from "../service/image";
+import { storeImage, processImage, segmentImage } from "../service/image";
 
 const router = express.Router();
 
@@ -35,7 +35,8 @@ router.get("/imageReady", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   try {
-    const resultImage = await processImage(userId);
+    // const resultImage = await processImage(userId);
+    const resultImage = await segmentImage(userId);
     console.log(resultImage)
     // Send result
     res.write(`data: ${JSON.stringify({ image: resultImage })}\n\n`);

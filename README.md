@@ -28,8 +28,8 @@ ls
 
 ```bash
 docker pull louam/backend:v1.1
-docker pull louam/frontend-img:latest
-docker pull louam/img-seg:v1.0
+docker pull louam/frontend-img:v1.1
+docker pull louam/img-seg:torch-v1.0
 ```
 
 ---
@@ -72,7 +72,8 @@ cd ../imageProcessing
 docker run -d \
   --name img-seg-container \
   --network backendNet \
-  louam/img-seg:v1.0
+  --gpus all \
+  louam/img-seg:torch-v1.1
 ```
 
 This container serves the ML API for image segmentation.
@@ -84,9 +85,9 @@ This container serves the ML API for image segmentation.
 ```bash
 cd ../frontend
 
-docker run -d -p 8080:80 \
+docker run -it -p 8080:80 \
   --name static-site \
-  louam/frontend-img:latest
+  louam/frontend-img:open-port-v1.0
 ```
 
 * Frontend will be accessible at [http://localhost:8080](http://localhost:8080)

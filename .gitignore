@@ -1,4 +1,5 @@
 **/__pycache__
 **/node_modules
 *.h5
+*.pth
 .env*
