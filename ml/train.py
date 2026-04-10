@@ -12,7 +12,11 @@ def train():
     # -------------------------
     # DATA
     # -------------------------
-    dataset = SegmentationDataset("data/train")
+    DATA_DIR = os.path.expanduser(
+    "~/Téléchargements/competition_data/competition_data/train"
+    )
+    
+    dataset = SegmentationDataset(root_dir=DATA_DIR, img_size=(128, 128))
     loader = DataLoader(dataset, batch_size=8, shuffle=True)
 
     # -------------------------
