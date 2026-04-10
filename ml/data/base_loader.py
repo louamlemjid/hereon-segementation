@@ -22,7 +22,7 @@ class SegmentationDataset(Dataset):
 
         img_path = os.path.join(self.root_dir, "images", img_name)
         mask_path = os.path.join(self.root_dir, "masks", img_name)
-        print(img_path,mask_path)
+        
         # -------------------
         # IMAGE
         # -------------------

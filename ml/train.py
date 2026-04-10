@@ -1,7 +1,7 @@
 import torch
 import mlflow
 import mlflow.pytorch
-
+import os
 from models.model_architecture import CustomUNet
 from data.base_loader import SegmentationDataset
 from torch.utils.data import DataLoader
@@ -15,7 +15,7 @@ def train():
     DATA_DIR = os.path.expanduser(
     "~/Téléchargements/competition_data/competition_data/train"
     )
-    
+
     dataset = SegmentationDataset(root_dir=DATA_DIR, img_size=(128, 128))
     loader = DataLoader(dataset, batch_size=8, shuffle=True)
 
@@ -63,3 +63,10 @@ def train():
 
         # save model
         mlflow.pytorch.log_model(model, "model")
+
+def main():
+    train()
+
+
+if __name__ == "__main__":
+    main()
