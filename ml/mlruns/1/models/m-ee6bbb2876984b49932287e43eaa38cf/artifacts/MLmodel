@@ -1,0 +1,23 @@
+artifact_path: /teamspace/studios/this_studio/hereon_segementation/ml/mlruns/1/models/m-ee6bbb2876984b49932287e43eaa38cf/artifacts
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.10.12
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.11.0+cu130
+mlflow_version: 3.11.1
+model_id: m-ee6bbb2876984b49932287e43eaa38cf
+model_size_bytes: 8571045
+model_uuid: m-ee6bbb2876984b49932287e43eaa38cf
+prompts: null
+run_id: cd05554851f94297b14f60b01abe08b5
+utc_time_created: '2026-04-10 13:53:15.381384'
