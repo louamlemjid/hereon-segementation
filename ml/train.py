@@ -2,44 +2,60 @@ import torch
 import mlflow
 import mlflow.pytorch
 
-def train(model, dataloader, optimizer, loss_fn, epochs=10, device="cuda"):
+from models.model_architecture import CustomUNet
+from data.base_loader import SegmentationDataset
+from torch.utils.data import DataLoader
 
-    model.to(device)
 
-    # Start MLflow experiment run
-    mlflow.start_run()
+def train():
 
-    # (optional but recommended)
-    mlflow.log_param("epochs", epochs)
-    mlflow.log_param("loss_fn", loss_fn.__class__.__name__)
+    # -------------------------
+    # DATA
+    # -------------------------
+    dataset = SegmentationDataset("data/train")
+    loader = DataLoader(dataset, batch_size=8, shuffle=True)
 
-    for epoch in range(epochs):
-        model.train()
+    # -------------------------
+    # MODEL
+    # -------------------------
+    model = CustomUNet()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    loss_fn = torch.nn.BCEWithLogitsLoss()
 
-        total_loss = 0.0
+    # -------------------------
+    # MLFLOW START
+    # -------------------------
+    mlflow.set_experiment("unet_segmentation")
 
-        for x, y in dataloader:
-            x, y = x.to(device), y.to(device)
+    with mlflow.start_run():
 
-            pred = model(x)
-            loss = loss_fn(pred, y)
+        # log hyperparams
+        mlflow.log_param("lr", 1e-3)
+        mlflow.log_param("batch_size", 8)
+        mlflow.log_param("optimizer", "Adam")
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        epochs = 5
 
-            total_loss += loss.item()
+        for epoch in range(epochs):
+            model.train()
+            total_loss = 0
 
-        avg_loss = total_loss / len(dataloader)
+            for x, y in loader:
+                pred = model(x)
+                loss = loss_fn(pred, y)
 
-        print(f"Epoch {epoch+1}/{epochs} - Loss: {avg_loss:.4f}")
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-        # log metrics to MLflow
-        mlflow.log_metric("train_loss", avg_loss, step=epoch)
+                total_loss += loss.item()
 
-    # =========================
-    # SAVE MODEL TO MLFLOW
-    # =========================
-    mlflow.pytorch.log_model(model, "model")
+            avg_loss = total_loss / len(loader)
 
-    mlflow.end_run()
+            print(f"Epoch {epoch} loss: {avg_loss:.4f}")
+
+            # log metric
+            mlflow.log_metric("loss", avg_loss, step=epoch)
+
+        # save model
+        mlflow.pytorch.log_model(model, "model")
