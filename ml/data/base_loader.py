@@ -22,7 +22,7 @@ class SegmentationDataset(Dataset):
 
         img_path = os.path.join(self.root_dir, "images", img_name)
         mask_path = os.path.join(self.root_dir, "masks", img_name)
-
+        
         # -------------------
         # IMAGE
         # -------------------
@@ -30,8 +30,10 @@ class SegmentationDataset(Dataset):
         if img is None:
             raise ValueError(f"Image not found: {img_path}")
 
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, self.img_size)
         img = img.astype(np.float32) / 255.0
+        img = np.ascontiguousarray(img)
 
         img = torch.from_numpy(img).permute(2, 0, 1)
 
@@ -43,7 +45,8 @@ class SegmentationDataset(Dataset):
             raise ValueError(f"Mask not found: {mask_path}")
 
         mask = cv2.resize(mask, self.img_size)
-        mask = mask.astype(np.float32) / 255.0
+        mask = (mask > 127).astype(np.float32)
+
         mask = torch.from_numpy(mask).unsqueeze(0)
 
         return img, mask
