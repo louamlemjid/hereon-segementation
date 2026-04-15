@@ -60,8 +60,26 @@ def train():
             # log metric
             mlflow.log_metric("loss", avg_loss, step=epoch)
 
-        # save model
-        mlflow.pytorch.log_model(model, "model")
+        # save model as torch
+        # mlflow.pytorch.log_model(model, "model")
+
+        # -------------------------
+        # CONVERT TO TORCHSCRIPT
+        # -------------------------
+        model.eval()
+
+        example_input = torch.randn(1, 3, 128, 128)
+
+        traced_model = torch.jit.trace(model, example_input)
+
+        # -------------------------
+        # LOG WITH MLFLOW / save with mlflow
+        # -------------------------
+        mlflow.pytorch.log_model(
+            traced_model,
+            "model",
+            pip_requirements=["torch"]
+        )
 
 def main():
     train()
