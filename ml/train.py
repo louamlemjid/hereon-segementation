@@ -16,13 +16,13 @@ def move_batch(x, y, device):
 # DICE METRIC
 # -------------------------
 def dice_score(pred, target, smooth=1e-6):
+    pred = torch.sigmoid(pred)  # ✅ convert logits → probs
     pred = (pred > 0.5).float()
     return (2 * (pred * target).sum()) / ((pred + target).sum() + smooth)
 
-
 def train():
     batch_size = 8 #!!!!!!!!!! change it to 32 to match the colab !!!!!!
-    
+    lr = 1e-4 
     # -------------------------
     # DATA
     # -------------------------
@@ -39,7 +39,7 @@ def train():
 
     model = CustomUNet().to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     loss_fn = torch.nn.BCEWithLogitsLoss()
 
     # -------------------------
@@ -74,7 +74,7 @@ def train():
         mlflow.log_params({
             "model": "CustomUNet",
             "optimizer": "Adam",
-            "lr": 1e-3,
+            "lr": lr,
             "batch_size": batch_size,
             "epochs": epochs,
             "loss_fn": "BCEWithLogitsLoss",

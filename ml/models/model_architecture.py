@@ -92,7 +92,7 @@ class CustomUNet(nn.Module):
         c9 = F.relu(self.conv9_1(u9))
         c9 = F.relu(self.conv9_2(c9))
 
-        outputs = torch.sigmoid(self.output(c9))
+        outputs = self.output(c9)
         return outputs
 
     def visualize_architecture(self,input_size=(3, 256, 256), device=None):
