@@ -2,13 +2,27 @@ import torch
 import mlflow
 import mlflow.pytorch
 import os
+
 from models.model_architecture import CustomUNet
 from data.base_loader import SegmentationDataset
 from torch.utils.data import DataLoader
+from mlflow.models.signature import infer_signature
+
+
+def move_batch(x, y, device):
+    return x.to(device), y.to(device)
+
+# -------------------------
+# DICE METRIC
+# -------------------------
+def dice_score(pred, target, smooth=1e-6):
+    pred = (pred > 0.5).float()
+    return (2 * (pred * target).sum()) / ((pred + target).sum() + smooth)
 
 
 def train():
-
+    batch_size = 8 #!!!!!!!!!! change it to 32 to match the colab !!!!!!
+    
     # -------------------------
     # DATA
     # -------------------------
@@ -16,34 +30,78 @@ def train():
     DATA_DIR = os.path.join(BASE_DIR, "dataset/train")
 
     dataset = SegmentationDataset(root_dir=DATA_DIR, img_size=(128, 128))
-    loader = DataLoader(dataset, batch_size=8, shuffle=True)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # -------------------------
-    # MODEL
+    # MODEL with gpu
     # -------------------------
-    model = CustomUNet()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model = CustomUNet().to(device)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     loss_fn = torch.nn.BCEWithLogitsLoss()
 
     # -------------------------
-    # MLFLOW START
+    # SCHEDULER
+    # -------------------------
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode="min",
+        factor=0.1,
+        patience=2
+    )
+
+    # -------------------------
+    # EARLY STOPPING
+    # -------------------------
+    best_loss = float("inf")
+    patience = 5
+    counter = 0
+
+    epochs = 50
+    
+    # -------------------------
+    # MLFLOW SETUP
     # -------------------------
     mlflow.set_experiment("unet_segmentation")
 
     with mlflow.start_run():
 
-        # log hyperparams
-        mlflow.log_param("lr", 1e-3)
-        mlflow.log_param("batch_size", 8)
-        mlflow.log_param("optimizer", "Adam")
+        # -------------------------
+        # LOG ALL HYPERPARAMS
+        # -------------------------
+        mlflow.log_params({
+            "model": "CustomUNet",
+            "optimizer": "Adam",
+            "lr": 1e-3,
+            "batch_size": batch_size,
+            "epochs": epochs,
+            "loss_fn": "BCEWithLogitsLoss",
+            "image_size": "128x128",
+            "dataset": "salt_dataset"
+        })
 
-        epochs = 5
+        # -------------------------
+        # TAGS (dashboard filters)
+        # -------------------------
+        mlflow.set_tag("project", "segmentation")
+        mlflow.set_tag("model_type", "UNet")
+        mlflow.set_tag("framework", "pytorch")
+
+        
 
         for epoch in range(epochs):
+
+            # -------------------------
+            # TRAINING
+            # -------------------------
             model.train()
-            total_loss = 0
+            train_loss = 0
 
             for x, y in loader:
+                x, y = move_batch(x, y, device)
+
                 pred = model(x)
                 loss = loss_fn(pred, y)
 
@@ -51,35 +109,86 @@ def train():
                 loss.backward()
                 optimizer.step()
 
-                total_loss += loss.item()
+                train_loss += loss.item()
 
-            avg_loss = total_loss / len(loader)
+            train_loss /= len(loader)
 
-            print(f"Epoch {epoch} loss: {avg_loss:.4f}")
+            # -------------------------
+            # VALIDATION
+            # -------------------------
+            model.eval()
+            val_loss = 0
+            dice_total = 0
 
-            # log metric
-            mlflow.log_metric("loss", avg_loss, step=epoch)
+            with torch.no_grad():
+                for x, y in loader:
+                    x, y = move_batch(x, y, device)
+                    pred = model(x)
 
-        # save model as torch
-        # mlflow.pytorch.log_model(model, "model")
+                    loss = loss_fn(pred, y)
+                    val_loss += loss.item()
 
-        # -------------------------
-        # CONVERT TO TORCHSCRIPT
-        # -------------------------
-        model.eval()
+                    dice_total += dice_score(pred, y).item()
 
-        example_input = torch.randn(1, 3, 128, 128)
+            val_loss /= len(loader)
+            dice_total /= len(loader)
 
-        traced_model = torch.jit.trace(model, example_input)
+            # -------------------------
+            # LOG METRICS
+            # -------------------------
+            mlflow.log_metric("train_loss", train_loss, step=epoch)
+            mlflow.log_metric("val_loss", val_loss, step=epoch)
+            mlflow.log_metric("dice", dice_total, step=epoch)
+            mlflow.log_metric("lr", optimizer.param_groups[0]["lr"], step=epoch)
 
-        # -------------------------
-        # LOG WITH MLFLOW / save with mlflow
-        # -------------------------
-        mlflow.pytorch.log_model(
-            traced_model,
-            "model",
-            pip_requirements=["torch"]
-        )
+            print(f"Epoch {epoch}: train={train_loss:.4f} val={val_loss:.4f} dice={dice_total:.4f}")
+
+            # -------------------------
+            # LR SCHEDULER
+            # -------------------------
+            scheduler.step(val_loss)
+
+            # -------------------------
+            # EARLY STOPPING + BEST MODEL
+            # -------------------------
+            if val_loss < best_loss:
+                best_loss = val_loss
+                counter = 0
+
+                model_cpu = model.cpu().eval()
+
+                example_input = torch.randn(1, 3, 128, 128)
+
+                with torch.no_grad():
+                    output = model_cpu(example_input)
+
+                signature = infer_signature(
+                    example_input.numpy(),
+                    output.numpy()
+                )
+
+                traced_model = torch.jit.trace(model_cpu, example_input)
+
+                mlflow.pytorch.log_model(
+                    traced_model,
+                    "model",
+                    signature=signature
+                )
+
+                # move model back to GPU for next training steps (IMPORTANT)
+                model = model.to(device)
+
+                print("✅ Best model saved")
+
+            else:
+                counter += 1
+                if counter >= patience:
+                    print("⛔ Early stopping triggered")
+                    break
+
+
+        print("Training finished")
+
 
 def main():
     train()
