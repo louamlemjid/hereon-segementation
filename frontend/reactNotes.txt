@@ -1,0 +1,8 @@
+This is the first time i read deaply about react:
+this is the best way to read about Docs: before sunset at a light crawded coffee shop : ) 
+you feel you are in a flow state... back to work ;)
+so react has the react router, it seems there is multiple modes:
+framework mode
+data mode
+declarative mode
+ 
